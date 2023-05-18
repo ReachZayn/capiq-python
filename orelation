@@ -1,0 +1,132 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from pytrends.exceptions import ResponseError
+from pytrends.request import TrendReq
+
+# Set up a connection to the Google Trends API
+pytrends = TrendReq(hl='en-US', tz=360)
+
+# Define the search query and regions
+query = 'Immigration'
+regions = ['CA-AB', 'CA-BC', 'CA-MB', 'CA-NB', 'CA-NL', 'CA-NS', 'CA-NT', 'CA-NU', 'CA-ON', 'CA-PE', 'CA-QC', 'CA-SK', 'CA-YT']
+
+# Define the temperature data as a dictionary
+temperatures = {
+    'CA-AB': 5.8,
+    'CA-BC': 10.1,
+    'CA-MB': 3.4,
+    'CA-NB': 6.6,
+    'CA-NL': 5.7,
+    'CA-NS': 6.9,
+    'CA-NT': -8.3,
+    'CA-NU': -13.8,
+    'CA-ON': 6.9,
+    'CA-PE': 7.7,
+    'CA-QC': 5.8,
+    'CA-SK': 2.5,
+    'CA-YT': -0.5
+}
+
+# Define the cost of living data as a dictionary
+cost_of_living = {
+    'CA-AB': 2170,
+    'CA-BC': 2470,
+    'CA-MB': 1800,
+    'CA-NB': 1610,
+    'CA-NL': 2430,
+    'CA-NS': 2220,
+    'CA-NT': 3120,
+    'CA-NU': 3630,
+    'CA-ON': 2200,
+    'CA-PE': 1800,
+    'CA-QC': 1880,
+    'CA-SK': 1800,
+    'CA-YT': 3120
+}
+
+# Define the Indian population data as a dictionary
+indian_population = {
+    'CA-AB': 117810,
+    'CA-BC': 342310,
+    'CA-MB': 30400,
+    'CA-NB': 6845,
+    'CA-NL': 1230,
+    'CA-NS': 10930,
+    'CA-NT': 490,
+    'CA-NU': 350,
+    'CA-ON': 727360,
+    'CA-PE': 935,
+    'CA-QC': 145290,
+    'CA-SK': 13740,
+    'CA-YT': 415
+}
+
+try:
+    # Get the search interest data for the query in each region
+    search_interest = []
+    for region in regions:
+        pytrends.build_payload(kw_list=[query], geo=region)
+        data = pytrends.interest_over_time()
+        if query in data.columns:
+            search_interest.append(data[query].sum())
+        else:
+            search_interest.append(0)
+
+    # Create a DataFrame with the search interest data
+    df = pd.DataFrame({'Region': regions, 'Search Interest': search_interest})
+
+    # Add columns for the temperature, cost of living, and Indian population data
+    df['Temperature'] = df['Region'].map(temperatures)
+    df['Cost of Living'] = [1850, 2250, 1520, 1950, 1670, 1800, 2050, 2150, 2050, 1970, 1740, 1600, 2000]
+    df['Indian Population'] = df['Region'].map(indian_population)
+
+    # Calculate the correlations between search interest and the other variables
+    corr_temperature = df['Search Interest'].corr(df['Temperature'])
+    corr_cost_of_living = df['Search Interest'].corr(df['Cost of Living'])
+    corr_indian_population = df['Search Interest'].corr(df['Indian Population'])
+
+    # Print the correlations to the console
+    print(f'Temperature correlation: {corr_temperature:.2f}')
+    print(f'Cost of living correlation: {corr_cost_of_living:.2f}')
+    print(f'Indian population correlation: {corr_indian_population:.2f}')
+
+    # Export the data to an Excel file
+    with pd.ExcelWriter('D:/Python/VS Python/output.xlsx') as writer:
+        df.to_excel(writer, sheet_name='Data')
+
+    # Create a bar chart of the search interest by region
+    fig, ax = plt.subplots()
+    ax.bar(df['Region'], df['Search Interest'])
+    ax.set_xlabel('Region')
+    ax.set_ylabel('Search interest')
+    plt.title(f'Search interest for "{query}" by region in Canada')
+    plt.xticks(rotation=90)
+    plt.show()
+
+    # Create a scatter plot of search interest vs temperature
+    fig, ax = plt.subplots()
+    ax.scatter(df['Search Interest'], df['Temperature'])
+    ax.set_xlabel('Search interest')
+    ax.set_ylabel('Temperature (°C)')
+    plt.title(f'Search interest vs temperature for "{query}" by region in Canada')
+    plt.show()
+
+    # Create a scatter plot of search interest vs cost of living
+    fig, ax = plt.subplots()
+    ax.scatter(df['Search Interest'], df['Cost of Living'])
+    ax.set_xlabel('Search interest')
+    ax.set_ylabel('Cost of living ($CAD)')
+    plt.title(f'Search interest vs cost of living for "{query}" by region in Canada')
+    plt.show()
+
+    # Create a scatter plot of search interest vs Indian population
+    fig, ax = plt.subplots()
+    ax.scatter(df['Search Interest'], df['Indian Population'])
+    ax.set_xlabel('Search interest')
+    ax.set_ylabel('Indian population')
+    plt.title(f'Search interest vs Indian population for "{query}" by region in Canada')
+    plt.show()
+    
+except (ResponseError, ValueError) as err:
+    # Handle any errors that occur when retrieving or analyzing the data
+    print(f'An error occurred: {err}')
